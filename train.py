@@ -1,5 +1,12 @@
 import numpy as np
 import argparse
+import matplotlib.pyplot as plt
+import json
+from PIL import Image
+
+import futility
+import fmodel
+
 import torch
 from torch import nn, optim
 import torchvision
@@ -8,32 +15,28 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 from torch.autograd import Variable
 from collections import OrderedDict
-import matplotlib.pyplot as plt
-import json
-from PIL import Image
-import futility
-import fmodel
+
 
 parser = argparse.ArgumentParser(
-    description = 'Parser for train.py'
+    description = 'Parser for training.py'
 )
 parser.add_argument('data_dir', action="store", default="./flowers/")
-parser.add_argument('--save_dir', action="store", default="./checkpoint.pth")
 parser.add_argument('--arch', action="store", default="vgg16")
-parser.add_argument('--learning_rate', action="store", type=float,default=0.001)
+parser.add_argument('--save_dir', action="store", default="./checkpoint.pth")
 parser.add_argument('--hidden_units', action="store", dest="hidden_units", type=int, default=512)
-parser.add_argument('--epochs', action="store", default=3, type=int)
+parser.add_argument('--learning_rate', action="store", type=float,default=0.001)
 parser.add_argument('--dropout', action="store", type=float, default=0.2)
+parser.add_argument('--epochs', action="store", default=3, type=int)
 parser.add_argument('--gpu', action="store", default="gpu")
 
 args = parser.parse_args()
 where = args.data_dir
-path = args.save_dir
 lr = args.learning_rate
-struct = args.arch
+path = args.save_dir
 hidden_units = args.hidden_units
-power = args.gpu
+struct = args.arch
 epochs = args.epochs
+power = args.gpu
 dropout = args.dropout
 
 if torch.cuda.is_available() and power == 'gpu':
@@ -42,11 +45,14 @@ else:
     device = torch.device("cpu")
 
 def main():
+    ''' train the PyTorch model
+    '''
+
     trainloader, validloader, testloader, train_data = futility.load_data(where)
     model, criterion = fmodel.setup_network(struct,dropout,hidden_units,lr,power)
     optimizer = optim.Adam(model.classifier.parameters(), lr= 0.001)
     
-    # Train Model
+    # Train the Model
     steps = 0
     running_loss = 0
     print_every = 5

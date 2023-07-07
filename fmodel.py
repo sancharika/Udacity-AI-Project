@@ -1,5 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+from PIL import Image
+
+import futility
+from collections import OrderedDict
+
 import torch
 from torch import nn, optim
 from torch.autograd import Variable
@@ -7,12 +13,15 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
-from collections import OrderedDict
-import json
-from PIL import Image
-import futility
 
 def setup_network(structure='vgg16',dropout=0.1,hidden_units=4096, lr=0.001, device='gpu'):
+    ''' Set up architecture based on input, device and create model,
+        returns model and loss
+    '''
+
+
+    from collections import OrderedDict
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if structure == 'vgg16':
         model = models.vgg16(pretrained=True)
@@ -22,27 +31,25 @@ def setup_network(structure='vgg16',dropout=0.1,hidden_units=4096, lr=0.001, dev
     for para in model.parameters():
         para.requires_grad = False
 
-    from collections import OrderedDict    
-
     model.classifier = nn.Sequential(nn.Linear(model.classifier[0].in_features , hidden_units),
                                      nn.ReLU(),
                                      nn.Dropout(dropout),
                                      nn.Linear(hidden_units, 102),
                                      nn.LogSoftmax(dim=1))
-    print(model)
     model = model.to(device)
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.classifier.parameters(), lr)
-    
     if torch.cuda.is_available() and device == 'gpu':
         device = torch.device("cuda:0")
     else:
         device = torch.device("cpu")
     model.to(device)
-
     return model, criterion
 
 def save_checkpoint(train_data, model = 0, path = 'checkpoint.pth', structure = 'vgg16', hidden_units = 4096, dropout = 0.3, lr = 0.001, epochs = 1):
+    ''' save checkpoint of the PyTorch model
+    '''
+
     model.class_to_idx =  train_data.class_to_idx
     torch.save({'structure' :structure,
                 'hidden_units':hidden_units,
@@ -54,31 +61,31 @@ def save_checkpoint(train_data, model = 0, path = 'checkpoint.pth', structure = 
                 path)
     
 def load_checkpoint(path = 'checkpoint.pth'):
+    ''' Create and load checkpoint for a PyTorch model,
+        returns the pytorch model
+    '''
+
     checkpoint = torch.load(path)
     lr = checkpoint['learning_rate']
     hidden_units = checkpoint['hidden_units']
     dropout = checkpoint['dropout']
     epochs = checkpoint['no_of_epochs']
     structure = checkpoint['structure']
-
     model, _ = setup_network(structure, dropout, hidden_units, lr)
-    
     model.class_to_idx = checkpoint['class_to_idx']
     model.load_state_dict(checkpoint['state_dict'])
-    
     return model
 
 def predict(image_path, model, topk=5, device='gpu'):   
+    ''' Evaluate the a PyTorch model
+    '''
     model.to('cuda')
     model.eval()
     img = process_image(image_path).numpy()
     img = torch.from_numpy(np.array([img])).float()
-
     with torch.no_grad():
         output = model.forward(img.cuda())
-        
     probs = torch.exp(output).data
-    
     return probs.topk(topk)
 
 

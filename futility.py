@@ -1,17 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+from PIL import Image
+from torch.autograd import Variable
+
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 from collections import OrderedDict
-import json
-from PIL import Image
-from torch.autograd import Variable
 
-arch = {"vgg16":25088,
-        "densenet121":1024}
+arch = {
+    "densenet121":1024,
+    "vgg16":25088
+        }
 
 def load_data(root = "./flowers"):
     with open('cat_to_name.json', 'r') as f:
