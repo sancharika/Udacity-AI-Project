@@ -1,4 +1,4 @@
-# Introduction to Machine Learning Nanodegree
+# AI PROGRAMMING WITH PYTHON 
 ## Deep Learning
 ### Create your own Image Classifier
 
