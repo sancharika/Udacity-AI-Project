@@ -1,8 +1,5 @@
 import numpy as np
 import argparse
-import matplotlib.pyplot as plt
-
-from collections import OrderedDict
 import json
 from PIL import Image
 
@@ -10,47 +7,44 @@ import futility
 import fmodel
 
 import torch
-from torch import nn, optim
-import torchvision
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import torchvision.models as models
-from torch.autograd import Variable
 
-parser = argparse.ArgumentParser(description = 'Parser for prediction.py')
-parser.add_argument('--dir', action="store",dest="data_dir", default="./flowers/")
-parser.add_argument('input', default='./flowers/test/1/image_06752.jpg', nargs='?', action="store", type = str)
-parser.add_argument('--top_k', default=5, dest="top_k", action="store", type=int)
-parser.add_argument('checkpoint', default='./checkpoint.pth', nargs='?', action="store", type = str)
-parser.add_argument('--gpu', default="gpu", action="store", dest="gpu")
-parser.add_argument('--category_names', dest="category_names", action="store", default='cat_to_name.json')
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Parser for prediction.py')
+    parser.add_argument('--dir', action="store", dest="data_dir", default="./flowers/")
+    parser.add_argument('input', default='./flowers/test/1/image_06752.jpg', nargs='?', action="store", type=str)
+    parser.add_argument('--top_k', default=5, dest="top_k", action="store", type=int)
+    parser.add_argument('checkpoint', default='./checkpoint.pth', nargs='?', action="store", type=str)
+    parser.add_argument('--gpu', default="gpu", action="store", dest="gpu")
+    parser.add_argument('--category_names', dest="category_names", action="store", default='cat_to_name.json')
+
+    return parser.parse_args()
 
 
-args = parser.parse_args()
-path_image = args.input
-device = args.gpu
-number_of_outputs = args.top_k
-path = args.checkpoint
-json_name = args.category_names
+def load_json(json_name):
+    with open(json_name, 'r') as json_file:
+        name = json.load(json_file)
+    return name
 
 
 def main():
-    ''' Predict images from a PyTorch model
-    '''
+    args = parse_arguments()
+    device = torch.device("cuda:0" if args.gpu == "gpu" and torch.cuda.is_available() else "cpu")
 
-    model=fmodel.load_checkpoint(path)
-    with open(json_name, 'r') as json_file:
-        name = json.load(json_file)
-        
-    probabilities = fmodel.predict(path_image, model, number_of_outputs, device)
+    model = fmodel.load_checkpoint(args.checkpoint)
+    class_to_idx = model.class_to_idx
+    idx_to_name = load_json(args.category_names)
+
+    probabilities = fmodel.predict(args.input, model, args.top_k, device)
+
     probability = np.array(probabilities[0][0])
-    labels = [name[str(index + 1)] for index in np.array(probabilities[1][0])]
-    i = 0
-    while i < number_of_outputs:
-        print("{} with a probability of {}".format(labels[i], probability[i]))
-        i += 1
+    labels = [idx_to_name[str(class_idx)] for class_idx in np.array(probabilities[1][0])]
+
+    print("Top {} predictions:".format(args.top_k))
+    for label, prob in zip(labels, probability):
+        print("{} with a probability of {:.2f}".format(label, prob))
+
     print("Finished Predicting!")
 
-    
-if __name__== "__main__":
+
+if __name__ == "__main__":
     main()
